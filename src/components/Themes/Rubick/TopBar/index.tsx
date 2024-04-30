@@ -22,12 +22,7 @@ function Main() {
       {/* BEGIN: Top Bar */}
       <div className="h-[67px] z-[51] flex items-center relative border-b border-slate-200">
         {/* BEGIN: Breadcrumb */}
-        <Breadcrumb className="hidden mr-auto -intro-x sm:flex">
-          <Breadcrumb.Link to="/dashboard">Application</Breadcrumb.Link>
-          <Breadcrumb.Link to="/dashboard" active={true}>
-            Dashboard
-          </Breadcrumb.Link>
-        </Breadcrumb>
+       
         {/* END: Breadcrumb */}
         {/* BEGIN: Search */}
         <div className="relative mr-3 intro-x sm:mr-6">

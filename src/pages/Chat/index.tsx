@@ -1,15 +1,26 @@
   import React, { useState, useEffect, useRef } from "react";
-  import "./style.css";
+  
 
   import axios from 'axios';
+  import { initializeApp } from "firebase/app";
+  import { getFirestore, collection, doc, setDoc, DocumentSnapshot } from 'firebase/firestore';
+import { DocumentReference, getDoc } from 'firebase/firestore';
+import { getAuth } from "firebase/auth";
 
+  const firebaseConfig = {
+    apiKey: "AIzaSyCc0oSHlqlX7fLeqqonODsOIC3XA8NI7hc",
+    authDomain: "onboarding-a5fcb.firebaseapp.com",
+    databaseURL: "https://onboarding-a5fcb-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "onboarding-a5fcb",
+    storageBucket: "onboarding-a5fcb.appspot.com",
+    messagingSenderId: "334607574757",
+    appId: "1:334607574757:web:2603a69bf85f4a1e87960c",
+    measurementId: "G-2C9J1RY67L"
+  };
 
-
-  /*
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
-  });
-  const db = admin.firestore();*/
+  
+  const app = initializeApp(firebaseConfig);
+  const firestore = getFirestore(app);
   interface Chat {
     id?: string;
     name?: string | "";
@@ -41,8 +52,8 @@
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
     const WHAPI_BASE_URL = 'https://gate.whapi.cloud';
-    const WHAPI_ACCESS_TOKEN = 'YIaooL9Osgrtpj7ZlZLaVK5fOjUIvFNx'; // Replace with your Whapi access token
-
+    let WHAPI_ACCESS_TOKEN = ''; // Replace with your Whapi access token
+    let companyId='014';
     // Update the CSS classes for message bubbles
     const myMessageClass = "flex-end bg-green-500 max-w-30 md:max-w-md lg:max-w-lg xl:max-w-xl mx-1 my-0.5 p-2 rounded-md self-end ml-auto text-white text-right";
     const otherMessageClass = "flex-start bg-gray-700 md:max-w-md lg:max-w-lg xl:max-w-xl mx-1 my-0.5 p-2 rounded-md text-white self-start";
@@ -56,108 +67,144 @@
       ghl_secret:'',
       refresh_token:'',
     };
-  /*ghlToken()
+    useEffect(() => {
+      ghlToken();
+    }, []);
+  
     async function ghlToken() {
       try {
-          await fetchConfigFromDatabase();
-          const { ghl_id, ghl_secret, refresh_token } = ghlConfig;
-          console.log('ghl_id:', ghl_id);
-          console.log('ghl_secret:', ghl_secret);
-          console.log('refresh_token:', refresh_token);
+        await fetchConfigFromDatabase();
+        const { ghl_id, ghl_secret, refresh_token} = ghlConfig;
+        console.log('ghl_id:', ghl_id);
+        console.log('ghl_secret:', ghl_secret);
+        console.log('refresh_token:', refresh_token);
+  
+        const encodedParams = new URLSearchParams();
+        encodedParams.set('client_id', ghl_id);
+        encodedParams.set('client_secret', ghl_secret);
+        encodedParams.set('grant_type', 'refresh_token');
+        encodedParams.set('refresh_token', refresh_token);
+        encodedParams.set('user_type', 'Location');
+  
+        const options = {
+          method: 'POST',
+          url: 'https://services.leadconnectorhq.com/oauth/token',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Accept: 'application/json'
+          },
+          data: encodedParams,
+        };
+  
+        const { data: newTokenData } = await axios.request(options);
+  
+        await setDoc(doc(firestore, 'companies', '014'), {
+          access_token: newTokenData.access_token,
+          refresh_token: newTokenData.refresh_token,
+        }, { merge: true });
+  // Call the searchConversation function to initiate the search
 
-          // Generate new token using fetched credentials and refresh token
-          const encodedParams = new URLSearchParams();
-          encodedParams.set('client_id', ghl_id);
-          encodedParams.set('client_secret', ghl_secret);
-          encodedParams.set('grant_type', 'refresh_token');
-          encodedParams.set('refresh_token', refresh_token);
-          encodedParams.set('user_type', 'Location');
-
-          const options = {
-              method: 'POST',
-              url: 'https://services.leadconnectorhq.com/oauth/token',
-              headers: {
-                  'Content-Type': 'application/x-www-form-urlencoded',
-                  Accept: 'application/json'
-              },
-              data: encodedParams,
-          };
-
-          const { data: newTokenData } = await axios.request(options);
-
-          await db.collection('companies').doc('014').set({
-              access_token: newTokenData.access_token,
-              refresh_token: newTokenData.refresh_token,
-          }, { merge: true });
-
-          console.log('Token generation and update complete');
+        console.log('Token generation and update complete');
+        await searchConversation(newTokenData.access_token);
       } catch (error) {
-          console.error('Error generating and updating token:', error);
-          throw error;
+        console.error('Error generating and updating token:', error);
+        throw error;
       }
+    }
+   
+  // Function to search conversation using the obtained access token
+// Function to search conversation using the obtained access token
+async function searchConversation(accessToken: String) {
+  try {
+      const locationId = 'q0PjrC2cUCmoTcOudutf';
+      const options = {
+          method: 'GET',
+          url: 'https://services.leadconnectorhq.com/contacts/',
+          headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Version: '2021-07-28',
+          },
+          params: {
+              locationId: locationId
+          }
+      };
+
+      const response = await axios.request(options);
+      console.log('Search Conversation Response:', response.data);
+   
+  } catch (error) {
+      console.error('Error searching conversation:', error);
   }
+}
 
-  async function fetchConfigFromDatabase() {
+
+    async function fetchConfigFromDatabase() {
+      const auth = getAuth(app);
+      const user = auth.currentUser;
       try {
-          const docRef = db.collection('companies').doc('014');
-          const doc = await docRef.get();
-          if (!doc.exists) {
-              console.log('No such document!');
-              return;
-          }
-        
+      
+        if(user?.email === 'admin@beverly.com'){
+          companyId='014';
+        }
+        else if(user?.email === 'admin@billert.com'){
+          companyId='011';
+        }
+        const docRef = doc(firestore, 'companies', companyId);
+        const docSnapshot: DocumentSnapshot = await getDoc(docRef);
+        if (!docSnapshot.exists()) {
+          console.log('No such document!');
+          return;
+        }
+        const data = docSnapshot.data();
+        ghlConfig = {
+          ghl_id: data.ghl_id,
+          ghl_secret: data.ghl_secret,
+          refresh_token: data.refresh_token
+        };
+        console.log('Document data:', data);
+        WHAPI_ACCESS_TOKEN =data.whapiToken;
+  
+        await fetchChatsWithRetry();
       } catch (error) {
-          console.error('Error fetching config:', error);
-          throw error;
+        console.error('Error fetching config:', error);
+        throw error;
       }
-  }*/
-
-    useEffect(() => {
-      const fetchChatsWithRetry = async () => {
-        let retryCount = 0;
-        const maxRetries = 20;
-        const retryDelay = 1; // 1 second
+    }
+    const fetchChatsWithRetry = async () => {
+      try {
+        setLoading(true); // Set loading to true before fetching chats
     
-        while (retryCount < maxRetries) {
-          try {
-            setLoading(true); // Set loading to true before fetching chats
-            const response = await fetch(`${WHAPI_BASE_URL}/chats`, {
-              headers: {
-                'Authorization': `Bearer ${WHAPI_ACCESS_TOKEN}`
-              }
-            });
-    
-            if (!response.ok) {
-              throw new Error('Failed to fetch chats');
-            }
-    
-            const data = await response.json();
-            console.log(data);
-            setChats(data.chats.map((chat: Chat) => ({
-              ...chat,
-            })));
-            
-            
-            // Exit the loop if chats are fetched successfully
-            return;
-          } catch (error) {
-            console.error('Failed to fetch chats:', error);
-    
-            // Increment the retry count
-            retryCount++;
-    
-            // Wait for retryDelay milliseconds before trying again
-            await new Promise(resolve => setTimeout(resolve, retryDelay));
-          } finally {
-            setLoading(false); // Set loading to false after fetching chats
+        const options = {
+          method: 'GET',
+          url: `${WHAPI_BASE_URL}/chats`,
+          headers: {
+            'Authorization': `Bearer ${WHAPI_ACCESS_TOKEN}`,
+            'accept': 'application/json'
           }
+        };
+    
+        const response = await axios.request(options);
+    
+        if (!response.data) {
+          throw new Error('Failed to fetch chats');
         }
     
-        console.error(`Failed to fetch chats after ${maxRetries} retries`);
-      };
+        const data = response.data;
+        console.log(data);
+        setChats(data.chats.map((chat: any) => ({ ...chat })));
     
-      fetchChatsWithRetry();
-    }, []);
+        // Exit the function if chats are fetched successfully
+        return;
+      } catch (error) {
+        console.error('Failed to fetch chats:', error);
+      } finally {
+        setLoading(false); // Set loading to false after fetching chats
+      }
+    
+      console.error('Failed to fetch chats');
+    };
+  
+ 
   // Function to clear messages when a non-WhatsApp icon is clicked
   const handleIconClick =  (iconId: string) => {
 
@@ -221,61 +268,54 @@
     fetchMessagesWithRetry();
     [selectedChatId]
   };
-    useEffect(() => {
-      const fetchMessagesWithRetry = async () => {
-        if (!selectedChatId) return;
 
-        let retryCount = 0;
-        const maxRetries = 10;
-        const retryDelay = 1000; // 1 second
+   
+useEffect(() => {
+  const fetchMessagesWithRetry = async () => {
+    if (!selectedChatId) return;
 
-        while (retryCount < maxRetries) {
-          try {
-            setLoading(true); // Set loading to true before fetching messages
-            const response = await fetch(`${WHAPI_BASE_URL}/messages/list/${selectedChatId}`, {
-              headers: {
-                'Authorization': `Bearer ${WHAPI_ACCESS_TOKEN}`
-              }
-            });
+    try {
+      setLoading(true); // Set loading to true before fetching messages
 
-            if (!response.ok) {
-              throw new Error('Failed to fetch messages');
-            }
-
-            const data = await response.json();
-            console.log('Messages:', data);
-            setMessages(data.messages.map((message: any) => ({
-              id: message.id,
-              text: {
-                body: message.text ? message.text.body : ""
-              },
-              from_me: message.from_me,
-              createdAt: message.timestamp,
-              type: message.type,
-              image: message.image ? message.image : undefined // Use undefined instead of empty string
-            })));
-            
-            // Exit the loop if messages are fetched successfully
-            return;
-          } catch (error) {
-            console.error('Failed to fetch messages:', error);
-
-            // Increment the retry count
-            retryCount++;
-
-            // Wait for retryDelay milliseconds before trying again
-            await new Promise(resolve => setTimeout(resolve, retryDelay));
-          } finally {
-            setLoading(false); // Set loading to false after fetching messages
-          }
+      const options = {
+        method: 'GET',
+        url: `${WHAPI_BASE_URL}/messages/list/${selectedChatId}`,
+        headers: {
+          'Authorization': `Bearer ${WHAPI_ACCESS_TOKEN}`,
+          'accept': 'application/json'
         }
-
-        console.error(`Failed to fetch messages after ${maxRetries} retries`);
       };
 
-      fetchMessagesWithRetry();
-    }, [selectedChatId]);
+      const response = await axios.request(options);
 
+      if (!response.data) {
+        throw new Error('Failed to fetch messages');
+      }
+
+      const data = response.data;
+      console.log('Messages:', data);
+      setMessages(data.messages.map((message: { id: any; text: { body: any; }; from_me: any; timestamp: any; type: any; image: any; }) => ({
+        id: message.id,
+        text: { body: message.text ? message.text.body : "" },
+        from_me: message.from_me,
+        createdAt: message.timestamp,
+        type: message.type,
+        image: message.image ? message.image : undefined
+      })));
+
+      // Exit the function if messages are fetched successfully
+      return;
+    } catch (error) {
+      console.error('Failed to fetch messages:', error);
+    } finally {
+      setLoading(false); // Set loading to false after fetching messages
+    }
+
+    console.error('Failed to fetch messages');
+  };
+
+  fetchMessagesWithRetry();
+}, [selectedChatId]);
     const handleSendMessage = async () => {
       if (!newMessage.trim() || !selectedChatId) return;
 
@@ -480,18 +520,10 @@
     }
     return (
       <div className="flex h-screen overflow-hidden">
-        <div className="w-1/4 p-4 bg-gray-200 overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-      <h2 className="text-lg font-bold">Chats</h2>
-      {/* Refresh icon */}
-      <button className="flex items-center px-4 py-2 font-medium tracking-wide text-white capitalize transition-colors duration-300 transform bg-blue-600 rounded-lg hover:bg-blue-500 focus:outline-none focus:ring focus:ring-indigo-300 focus:ring-opacity-80">
-    <svg className="w-5 h-5 mx-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" onClick={handleRefreshClick}>
-        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
-    </svg>
-
-</button>
-    </div>
+        <div className="w-1/4 p-4 overflow-y-auto">
+    
           <div>
+        
             {chats.map((chat) => (
               <div
                 key={chat.id}
@@ -509,8 +541,11 @@
           </div>
         </div>
         
-        <div className="w-3/4 p-4 bg-white overflow-y-auto relative">
-          
+        <div className="w-3/4 p-4 bg-wblack overflow-y-auto relative">
+      
+
+
+
           <div className="overflow-y-auto" style={{ paddingBottom: "200px" }}>
           {isLoading && (
         <div className="fixed top-0 left-0 right-0 bottom-0 flex justify-center items-center bg-opacity-50 ">

@@ -53,19 +53,11 @@ function Main() {
               className="w-6"
               src={logoUrl}
             />
-            <span className="ml-3 text-lg text-white"> Tinker </span>
+            <span className="ml-3 text-lg text-white"> Juta Software </span>
           </Link>
           {/* END: Logo */}
           {/* BEGIN: Breadcrumb */}
-          <Breadcrumb
-            light
-            className="h-full md:ml-10 md:pl-10 md:border-l border-white/[0.08] mr-auto -intro-x"
-          >
-            <Breadcrumb.Link to="/dashboard">Application</Breadcrumb.Link>
-            <Breadcrumb.Link to="/dashboard" active={true}>
-              Dashboard
-            </Breadcrumb.Link>
-          </Breadcrumb>
+        
           {/* END: Breadcrumb */}
           {/* BEGIN: Search */}
           <div className="relative mr-3 intro-x sm:mr-6">

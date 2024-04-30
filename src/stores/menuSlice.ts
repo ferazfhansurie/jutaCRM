@@ -20,7 +20,9 @@ export interface MenuState {
 }
 
 const initialState: MenuState = {
-  menu: [],
+  menu: [
+    'simple-menu'
+  ],
 };
 
 export const menuSlice = createSlice({
@@ -34,11 +36,11 @@ export const selectMenu = (layout: Themes["layout"]) => (state: RootState) => {
     return topMenu;
   }
 
-  if (layout == "simple-menu") {
-    return simpleMenu;
+  if (layout == "side-menu") {
+    return sideMenu;
   }
 
-  return sideMenu;
+  return simpleMenu;
 };
 
 export default menuSlice.reducer;
